@@ -1,0 +1,66 @@
+CREATE TABLE leave_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empId INT,
+    start_date DATE,
+    end_date DATE,
+    reason TEXT,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    FOREIGN KEY (empId) REFERENCES employees(empId) ON DELETE CASCADE
+);
+
+CREATE TABLE employees (
+    empId INT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    phone VARCHAR(15),
+    salary VARCHAR(20),
+    designation VARCHAR(50),
+    username VARCHAR(50) UNIQUE,
+    password VARCHAR(50) -- This is for employee login
+);
+
+ALTER TABLE employees 
+ADD COLUMN username VARCHAR(50) UNIQUE AFTER designation,
+ADD COLUMN password VARCHAR(50) AFTER username;
+
+SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'employees' AND COLUMN_NAME IN ('username', 'password');
+
+ALTER TABLE employees 
+MODIFY COLUMN empId INT AUTO_INCREMENT PRIMARY KEY;
+
+ALTER TABLE employees ADD COLUMN education VARCHAR(50);
+
+
+-- Alter the leave_requests table to add a substitute employee field
+ALTER TABLE leave_requests 
+ADD COLUMN substitute_empId INT NULL,
+ADD COLUMN substitute_assigned BOOLEAN DEFAULT FALSE,
+ADD CONSTRAINT fk_substitute_employee 
+    FOREIGN KEY (substitute_empId) 
+    REFERENCES employees(empId);
+
+-- You might want to add an index for performance
+CREATE INDEX idx_leave_substitute ON leave_requests(substitute_empId);
+
+-- Check if index exists first
+SELECT COUNT(1) INTO @index_exists 
+FROM information_schema.statistics 
+WHERE table_schema = DATABASE() 
+AND table_name = 'leave_requests' 
+AND index_name = 'idx_leave_dates';
+
+-- Create index only if it doesn't exist
+SET @create_index = CONCAT('CREATE INDEX idx_leave_dates ON leave_requests(start_date, end_date)');
+PREPARE stmt FROM @create_index;
+
+-- Only execute if index doesn't exist
+SET @index_exists = IFNULL(@index_exists, 0);
+SET @execute_stmt = IF(@index_exists = 0, 'EXECUTE stmt', 'SELECT "Index already exists"');
+PREPARE execute_stmt FROM @execute_stmt;
+EXECUTE execute_stmt;
+DEALLOCATE PREPARE stmt;
+DEALLOCATE PREPARE execute_stmt;
+
+-- Create index (will error if already exists, but you can catch/ignore this)
+CREATE INDEX idx_leave_dates ON leave_requests(start_date, end_date);
