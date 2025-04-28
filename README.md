@@ -28,8 +28,7 @@ Leave request management
 Substitute employee assignment
 Data filtering options
 
-🖼️ Screenshots
-[Add screenshots of your application here]
+
 🛠️ Technology Stack
 
 Frontend: Java Swing for GUI
